@@ -1,0 +1,11 @@
+# lab_chats
+### A set of modules for communicating with some common scientific laboratory equipment
+
+The project currently includes 4 modules for working with 4 different pieces of equipment.  All modules use Python's built-in `logging` module for feedback.  Each module defines its own logger with the same name as the file which contains it using `logger = logging.getLogger(__name__)`.
+
+## The modules
+
+  1. **`bkfungen`**: For working with function generators made by [BK Precision](http://www.bkprecision.com/products/signal-generators.html).  The package was specifically developed for working with the 4050 series signal generators but should work with many of their other products as well.  It relies on the [`pyvisa` package](https://github.com/hgrecco/pyvisa) for communication.
+  2. **`ncdrelay`**: A small package for controlling RS232 controllable relays produced by [National Control Devices](https://www.controlanything.com/Relay/Relay/RS232_Relay_Controllers).  It relies on the [`pyserial` package](https://github.com/pyserial/pyserial) for communication. 
+  3. **`ophirpower`**: A package for communicating with [Ophir power meters](http://www.ophiropt.com/laser--measurement/products/Laser-Power-Meters-Laser-Energy-Meters) which are commonly found in many optical labs.  The package was tested on the Vega series of power meter heads, but should be compatible with other Ophir power meter heads as well.  It relies on the [`win32com` package](https://sourceforge.net/projects/pywin32/files/pywin32/) for communication.
+  4. **`tekscope`**: A package for communicating with [Tektronix oscilloscopes](http://www.tek.com/oscilloscope).  The package was designed for and tested on the TDS and DPO series oscilloscopes.  Unfortunately, the command structure changes slightly from one series to the next so the module will need some modifications to get some methods working with other series of oscilloscopes.  The oscilloscopes have hundreds of commands and only the most common are implemented as class methods so it will be necessary to look up the programmers manual from Tektronix in order to access all features of the scope.  This package relies on the [`pyvisa` package](https://github.com/hgrecco/pyvisa) for communication.
