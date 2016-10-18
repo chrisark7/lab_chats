@@ -9,7 +9,7 @@ from time import sleep
 import visa
 
 __author__ = "Chris Mueller and Mingcan Chen"
-__email__ = "cmueller@a-optowave.com"
+__email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,7 @@ import numpy as np
 import visa
 
 __author__ = "Chris Mueller and Mingcan Chen"
-__email__ = "cmueller@a-optowave.com"
+__email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class Scope(object):
     Note that this class relies heavily on the pyvisa package.  It can be considered, in some
     sense, as a higher-level version of that package.
 
-    Valid commands can be found in the TEK-XXXX-Series-programing-manual available from teh
+    Valid commands can be found in the TEK-XXXX-Series-programing-manual available from the
     Tektronix website.
     """
     def __init__(self, device_id=0, timeout=20):
@@ -58,7 +58,7 @@ class Scope(object):
             except:
                 raise ValueError('device_id should be a string or an integer')
             if device_id > len(devices) - 1:
-                raise ValueError('device_id is largerh than the number of devices')
+                raise ValueError('device_id is larger than the number of devices')
             else:
                 scope_id = devices[device_id]
         elif device_id > len(devices) - 1:
