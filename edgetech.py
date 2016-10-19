@@ -16,6 +16,7 @@ import warnings
 import re
 from datetime import datetime
 from time import time, sleep
+import numpy as np
 
 __author__ = "Chris Mueller"
 __email__ = "chrisark7@gmail.com"
@@ -101,7 +102,48 @@ class DewMaster:
         return out.decode(encoding='utf-8').strip()
 
     ###############################################################################################
-    # Specific commands
+    # Internal Methods
+    ###############################################################################################
+    @staticmethod
+    def _parse_data(data_str):
+        """ Parses the data string returned by the DewMaster when it is polled
+
+        :param data_str: A data string from the DewMaster
+        :type data_str: str
+        :return: (time stamp, list of measurements, list of data values, measurement state)
+        :rtype: (datetime.datetime, list of str, list of float, str)
+        """
+        # Create datetime object
+        match = re.match(r"(\d\d/?){3}\s+(\d\d:?){3}", data_str)
+        if not match:
+            warnings.warn('Unable to identify timestamp, using local time')
+            dt = datetime.fromtimestamp(time())
+        else:
+            dt = datetime.strptime(match.group(0), r"%m/%d/%y %H:%M:%S")
+        # Create list of measurements
+        match = re.findall(r"([A-Z]+)\s+=\s+([\d\.]+)", data_str)
+        if not match:
+            raise IOError('Unable to find data in output string')
+        else:
+            measurements = []
+            data = []
+            for m in match:
+                measurements.append(m[0])
+                data.append(float(m[1]))
+        # Check status
+        match = re.search(r"([A-Z]+)\s*$", data_str)
+        if not match:
+            warnings.warn('Unable to identify status of measurement')
+            status = 'UNKNOWN'
+        else:
+            status = match.group(1)
+            if not status == 'SERVOLOCK':
+                warnings.warn('Status is {0}, data may be inaccurate'.format(status))
+        # Return
+        return (dt, measurements, data, status)
+
+    ###############################################################################################
+    # Get/Set commands
     ###############################################################################################
     def get_status(self, print_status=True):
         """ Returns a system status report
@@ -178,20 +220,13 @@ class DewMaster:
         # Check that out has the proper number of values
         if return_raw:
             return out
-        # Check that the returned data has the proper number of fields
-        sout = out.split()
-        if not len(sout) == 13:
-            raise IOError('{0} does not seem to have the proper format'.format(out))
-        # Create datetime object
-        match = re.match(r"(\d\d)/(\d\d)/(\d\d)\s+(\d\d):(\d\d):(\d\d)", out)
-        if not match:
-            warnings.warn('Unable to identify timestamp, using local time')
-            dt = datetime.fromtimestamp(time())
         else:
-            dt = datetime.strptime(sout[0] + " " + sout[1], match.group(0))
-        # Create list of measurements
+            return self._parse_data(out)
 
-        
+
+
+
+
 
 
 
