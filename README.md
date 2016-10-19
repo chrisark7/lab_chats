@@ -1,4 +1,4 @@
-# lab_chats
+# labchat
 ### A set of modules for communicating with some common scientific laboratory equipment
 
 The project currently includes 4 modules for working with 4 different pieces of equipment.  All modules use Python's built-in `logging` module for feedback.  Each module defines its own logger with the same name as the file which contains it using `logger = logging.getLogger(__name__)`.
