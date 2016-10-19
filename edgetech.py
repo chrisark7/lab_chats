@@ -16,7 +16,6 @@ import warnings
 import re
 from datetime import datetime
 from time import time, sleep
-import numpy as np
 
 __author__ = "Chris Mueller"
 __email__ = "chrisark7@gmail.com"
@@ -102,47 +101,6 @@ class DewMaster:
         return out.decode(encoding='utf-8').strip()
 
     ###############################################################################################
-    # Internal Methods
-    ###############################################################################################
-    @staticmethod
-    def _parse_data(data_str):
-        """ Parses the data string returned by the DewMaster when it is polled
-
-        :param data_str: A data string from the DewMaster
-        :type data_str: str
-        :return: (time stamp, list of measurements, list of data values, measurement state)
-        :rtype: (datetime.datetime, list of str, list of float, str)
-        """
-        # Create datetime object
-        match = re.match(r"(\d\d/?){3}\s+(\d\d:?){3}", data_str)
-        if not match:
-            warnings.warn('Unable to identify timestamp, using local time')
-            dt = datetime.fromtimestamp(time())
-        else:
-            dt = datetime.strptime(match.group(0), r"%m/%d/%y %H:%M:%S")
-        # Create list of measurements
-        match = re.findall(r"([A-Z]+)\s+=\s+([\d\.]+)", data_str)
-        if not match:
-            raise IOError('Unable to find data in output string')
-        else:
-            measurements = []
-            data = []
-            for m in match:
-                measurements.append(m[0])
-                data.append(float(m[1]))
-        # Check status
-        match = re.search(r"([A-Z]+)\s*$", data_str)
-        if not match:
-            warnings.warn('Unable to identify status of measurement')
-            status = 'UNKNOWN'
-        else:
-            status = match.group(1)
-            if not status == 'SERVOLOCK':
-                warnings.warn('Status is {0}, data may be inaccurate'.format(status))
-        # Return
-        return (dt, measurements, data, status)
-
-    ###############################################################################################
     # Get/Set commands
     ###############################################################################################
     def get_status(self, print_status=True):
@@ -195,7 +153,85 @@ class DewMaster:
         elif not int(match.group(1)) == avg_num:
             warnings.warn('Average was set to {0} instead of {1}'.format(match.group(1), avg_num))
 
-    def get_data(self, return_raw=False):
+    def set_output_interval(self, interval):
+        """ Sets the data output interval in seconds
+
+        :param interval: The output interval in seocnds
+        :type interval: int
+        """
+        # Check type
+        if type(interval) is not int:
+            warnings.warn('interval should be an even number of seconds')
+            try:
+                interval = int(interval)
+            except:
+                raise TypeError('interval should be an integer')
+        if interval < 1:
+            raise ValueError('interval should be greater than zero')
+        # Set the output interval
+        self.write('O')
+        self.read()
+        self.write(str(interval))
+        out = self.read()
+        self.read()
+        # Check output
+        match = re.search(r"The new serial interval is (\d+)", out)
+        if not match:
+            warnings.warn('Interval may not have been set properly')
+        elif not int(match.group(1)) == interval:
+            warnings.warn('Interval was set to {0} instead of {1}'.format(match.group(1), interval))
+
+    ###############################################################################################
+    # Data Collection
+    ###############################################################################################
+    @staticmethod
+    def _parse_data(data_str):
+        """ Parses the data string returned by the DewMaster when it is polled
+
+        :param data_str: A data string from the DewMaster
+        :type data_str: str
+        :return: (time stamp, list of measurements, list of data values, measurement state)
+        :rtype: (datetime.datetime, list of str, list of float, str)
+        """
+        # Check for multiple lines
+        if re.search('\r\n', data_str):
+            warnings.warn('data_str has multiple lines, using the first recognized data line')
+            for data_n in data_str.split('\r\n'):
+                if re.search(r"([A-Z]+)\s+=\s+([-\d\.]+)", data_str):
+                    data_str = data_n
+                    break
+            else:
+                raise ValueError('{0} does not appear to contain any data'.format(data_str))
+        # Create datetime object
+        match = re.search(r"(\d\d/?){3}\s+(\d\d:?){3}", data_str)
+        if not match:
+            warnings.warn('Unable to identify timestamp, using local time')
+            dt = datetime.fromtimestamp(time())
+        else:
+            dt = datetime.strptime(match.group(0), r"%m/%d/%y %H:%M:%S")
+        # Create list of measurements
+        match = re.findall(r"([A-Z]+)\s+=\s+([-\d\.]+)", data_str)
+        if not match:
+            raise ValueError('{0} does not appear to contain any data'.format(data_str))
+        else:
+            measurements = []
+            data = []
+            for m in match:
+                measurements.append(m[0])
+                data.append(float(m[1]))
+        # Check status
+        match = re.search(r"([A-Z]+)\s*$", data_str)
+        if not match:
+            warnings.warn('Unable to identify status of measurement')
+            status = 'UNKNOWN'
+        else:
+            status = match.group(1)
+            if not status == 'SERVOLOCK':
+                warnings.warn('Status is {0}, data may be inaccurate'.format(status))
+        # Return
+        return (dt, measurements, data, status)
+
+    def get_data_immediate(self, return_raw=False):
         """ Polls the DewMaster for the current data on screen
 
         If the return_raw parameter is True, then this method returns the raw string sent by the
@@ -222,6 +258,8 @@ class DewMaster:
             return out
         else:
             return self._parse_data(out)
+
+
 
 
 
