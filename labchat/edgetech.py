@@ -11,11 +11,13 @@ which gives it some odd features.  Namely, when a command is entered, the device
 then be sent with the second and third (or more) letters and the endline characters.
 """
 
-import serial
 import warnings
 import re
+import os
 from datetime import datetime
 from time import time, sleep
+import serial
+from numpy import save
 
 __author__ = "Chris Mueller"
 __email__ = "chrisark7@gmail.com"
@@ -61,6 +63,12 @@ class DewMaster:
         """ Closes communication with the DewMaster
         """
         self.device.close()
+
+    def flush(self):
+        """ Reads any data in the output buffer without raising a warning if there is none
+        """
+        if self.device.in_waiting:
+            self.device.read(self.device.in_waiting)
 
     def write(self, command):
         """ Writes a command to the DewMaster
@@ -114,6 +122,7 @@ class DewMaster:
         :rtype: str
         """
         # Read system status
+        self.flush()
         self.write('ST')
         out = self.read()
         # Send enter and read poll output
@@ -141,6 +150,7 @@ class DewMaster:
         if avg_num < 1 or avg_num > 16:
             raise ValueError('avg_num should be between 1 and 16')
         # Issue average command and read output
+        self.flush()
         self.write('AV')
         self.read()
         self.write(str(avg_num))
@@ -169,6 +179,7 @@ class DewMaster:
         if interval < 1:
             raise ValueError('interval should be greater than zero')
         # Set the output interval
+        self.flush()
         self.write('O')
         self.read()
         self.write(str(interval))
@@ -247,17 +258,107 @@ class DewMaster:
         :rtype: (datetime.datetime, list of str, list of float, str)
         """
         # Write polling command and get data
+        self.flush()
         self.write('P')
         out = self.read()
         self.read()
-        # Check if out captured 2 readings
-        if re.search('\r\n', out):
-            out = out.split('\r\n')[0]
         # Check that out has the proper number of values
         if return_raw:
             return out
         else:
             return self._parse_data(out)
+
+    def log_data(self, filename, interval, total=None, npy=True, csv=True):
+        """ Logs data to npy and csv files
+
+        This routine logs data to either a numpy .npy file or a .csv file, or both.  The interval
+        between data points is specified by interval, and should be a number in seconds.  The
+        total amount of time is specified by total, and should be a number in seconds.  If total
+        is left as None, then the log records until ctrl-c is pressed or the python session is
+        closed.
+
+        :param filename: The filename (without extensions) of the files which will be created
+        :param interval: The time period in seconds between each data point
+        :param totol: The toatl amount of time to record for, records forever if None
+        :param npy: Specifies whether or not the data should be saved as an .npy file
+        :param csv: Specifies whether or not the data should be saved as a .csv file
+        :type filename: str
+        :type interval: int
+        :type total: int
+        :type npy: bool
+        :type csv: bool
+        """
+        # Check path and create filenames
+        if not os.path.exists(os.path.split(filename)[0]):
+            raise NotADirectoryError('filename does not point to a valid directory')
+        csv_flnm = os.path.splitext(filename)[0] + '.csv'
+        npy_flnm = os.path.splitext(filename)[0] + '.npy'
+        # Start the data output from the DewMaster
+        self.set_output_interval(interval)
+        # Get the first data points
+        data, tries = [], 0
+        while not data:
+            sleep(interval)
+            raw_data = self.read().split('\r\n')
+            for d in raw_data:
+                try:
+                    data.append(self._parse_data(d))
+                    print(d)
+                except ValueError:
+                    pass
+            if tries > 2:
+                raise IOError('unable to get data from instrument')
+            tries += 1
+        # Start the files
+        save(npy_flnm, data)
+        with open(csv_flnm, mode='w') as f:
+            # Write header
+            f.write('Time, ')
+            for measurement in data[0][1]:
+                f.write(measurement + ', ')
+            f.write('Status\n')
+            # Write data
+            for d in data:
+                f.write(d[0].strftime('%m/%d/%Y %H:%M:%S') + ', ')
+                for measurement in d[2]:
+                    f.write('{0:g}, '.format(measurement))
+                f.write(d[3] + '\n')
+        # Start the data collection loop
+        if total is None:
+            go_cond = True
+        else:
+            t_stop = time() + total
+            go_cond = True
+        while go_cond:
+            data_n = []
+            sleep(interval)
+            raw_data = self.read().split('\r\n')
+            for d in raw_data:
+                try:
+                    data_n.append(self._parse_data(d))
+                    print(d)
+                except ValueError:
+                    pass
+            # Write data to files
+            if data_n:
+                tries = 0
+                # npy file
+                data += data_n
+                save(npy_flnm, data)
+                # csv file
+                with open(csv_flnm, mode='a') as f:
+                    # Write data
+                    for d in data_n:
+                        f.write(d[0].strftime('%m/%d/%Y %H:%M:%S') + ', ')
+                        for measurement in d[2]:
+                            f.write('{0:g}, '.format(measurement))
+                        f.write(d[3] + '\n')
+            else:
+                if tries > 3:
+                    raise IOError('No data received for 4 tries in a row')
+                tries += 1
+            if total is not None:
+                go_cond = time() < t_stop
 
 
 
