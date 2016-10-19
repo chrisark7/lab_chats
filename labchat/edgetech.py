@@ -67,8 +67,8 @@ class DewMaster:
     def flush(self):
         """ Reads any data in the output buffer without raising a warning if there is none
         """
-        if self.device.in_waiting:
-            self.device.read(self.device.in_waiting)
+        if self.device.inWaiting():
+            self.device.read(self.device.inWaiting())
 
     def write(self, command):
         """ Writes a command to the DewMaster
@@ -96,7 +96,7 @@ class DewMaster:
         last_val = 0
         out = ''.encode(encoding='utf-8')
         while t_now < t_stop:
-            now_val = self.device.in_waiting
+            now_val = self.device.inWaiting()
             if now_val > 0 and now_val == last_val:
                 out = self.device.read(now_val)
                 break
