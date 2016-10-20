@@ -34,6 +34,14 @@ class DewMaster:
          :type port: int or str
          :type timeout: int
         """
+        # Parse port
+        if type(port) not in [str, int]:
+            try:
+                port = int(port)
+            except:
+                raise TypeError('port should be an int or a str')
+        if type(port) is int:
+            port = 'COM{0}'.format(port)
         # Try to connect to the port
         try:
             self.device = serial.Serial(port, baudrate=9600, bytesize=serial.EIGHTBITS,
@@ -88,7 +96,11 @@ class DewMaster:
 
         This method waits for the DewMaster to be ready to send a message for up to the specified
         timeout period.  If the DewMaster does not return any data, then it returns a blank string
-        and prints a warning.
+        and prints a warning.  The returned data is formatted as a string and has been stripped of
+        leading and trailing whitespace.
+
+        :return: All data waiting in the output buffer of the DewMaster
+        :rtype: str
         """
         # Get start time and define stop time
         t_now = time()
@@ -139,6 +151,9 @@ class DewMaster:
         """ Sets the number of averages for each reading
 
         The range of values allowed is 1 to 16
+
+        :param avg_num: The number of readings internally averaged for each output, between 1 and 16
+        :type avg_num: int
         """
         # Check type
         if type(avg_num) is not int:
@@ -277,9 +292,11 @@ class DewMaster:
         is left as None, then the log records until ctrl-c is pressed or the python session is
         closed.
 
+        If both npy and csv are False, then the data will simply be printed to the screen.
+
         :param filename: The filename (without extensions) of the files which will be created
         :param interval: The time period in seconds between each data point
-        :param totol: The toatl amount of time to record for, records forever if None
+        :param totol: The total amount of time to record for, records forever if None
         :param npy: Specifies whether or not the data should be saved as an .npy file
         :param csv: Specifies whether or not the data should be saved as a .csv file
         :type filename: str
@@ -310,19 +327,23 @@ class DewMaster:
                 raise IOError('unable to get data from instrument')
             tries += 1
         # Start the files
-        save(npy_flnm, data)
-        with open(csv_flnm, mode='w') as f:
-            # Write header
-            f.write('Time, ')
-            for measurement in data[0][1]:
-                f.write(measurement + ', ')
-            f.write('Status\n')
-            # Write data
-            for d in data:
-                f.write(d[0].strftime('%m/%d/%Y %H:%M:%S') + ', ')
-                for measurement in d[2]:
-                    f.write('{0:g}, '.format(measurement))
-                f.write(d[3] + '\n')
+        if npy:
+            save(npy_flnm, data)
+        if csv:
+            with open(csv_flnm, mode='w') as f:
+                # Write header
+                f.write('Time, ')
+                for measurement in data[0][1]:
+                    f.write(measurement + ', ')
+                f.write('Status\n')
+                # Write data
+                for d in data:
+                    f.write(d[0].strftime('%m/%d/%Y %H:%M:%S') + ', ')
+                    for measurement in d[2]:
+                        f.write('{0:g}, '.format(measurement))
+                    f.write(d[3] + '\n')
+        for d in data:
+            print(d)
         # Start the data collection loop
         if total is None:
             go_cond = True
@@ -344,15 +365,17 @@ class DewMaster:
                 tries = 0
                 # npy file
                 data += data_n
-                save(npy_flnm, data)
+                if npy:
+                    save(npy_flnm, data)
                 # csv file
-                with open(csv_flnm, mode='a') as f:
-                    # Write data
-                    for d in data_n:
-                        f.write(d[0].strftime('%m/%d/%Y %H:%M:%S') + ', ')
-                        for measurement in d[2]:
-                            f.write('{0:g}, '.format(measurement))
-                        f.write(d[3] + '\n')
+                if csv:
+                    with open(csv_flnm, mode='a') as f:
+                        # Write data
+                        for d in data_n:
+                            f.write(d[0].strftime('%m/%d/%Y %H:%M:%S') + ', ')
+                            for measurement in d[2]:
+                                f.write('{0:g}, '.format(measurement))
+                            f.write(d[3] + '\n')
             else:
                 if tries > 3:
                     raise IOError('No data received for 4 tries in a row')
