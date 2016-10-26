@@ -398,9 +398,9 @@ class DewMasterData:
         :type filename: str
         """
         # Check extension
-        if os.path.splitext(filename)[1] == '.csv':
-            warnings.warn('filename should point to npy file not csv')
-            filename = os.path.join(os.path.splitext(filename), '.npy')
+        if not os.path.splitext(filename)[1] == '.npy':
+            warnings.warn('filename should point to an npy file')
+            filename = os.path.splitext(filename)[0] +'.npy'
         # Try to import
         try:
             data = np.load(filename)
@@ -413,7 +413,7 @@ class DewMasterData:
     # Internal Get Methods
     ###############################################################################################
     def _get_data(self):
-        """ Returns the measuremed value for each of the three measurements at each data point
+        """ Returns the measured value for each of the three measurements at each data point
 
         The data is returned as a N x 3 numpy array with numeric entries
 
@@ -440,7 +440,7 @@ class DewMasterData:
         """
         return np.array(self.data[:, 1].tolist())
 
-    def _get_status(self):
+    def _get_measurement_status(self):
         """ Returns the status of each measurement as a single column ndarray
 
         :return: The status of each measurement as a single column ndarray
@@ -448,15 +448,66 @@ class DewMasterData:
         """
         return self.data[:, 3]
 
+    ###############################################################################################
+    # User Get Methods
+    ###############################################################################################
+    def get_data(self):
+        """ Returns the measured value for each of the three measurements at each data point
 
+        The data is returned as a N x 3 numpy array with numeric entries
 
+        :return: Measurement value for each of the three measurements at each data point
+        :rtype: np.ndarray of float
+        """
+        return self._get_data()
 
+    def get_measurement_types(self, summary=True):
+        """ Returns the measurement type of the three measurements
 
+        If summary is True, then this method returns a 3-element list with the type of each
+        measurement.  If summary is False, then it returns an N x 3 numpy array with the type of
+        measurement at every single data point.
 
+        :param summary: If True, then a summary is returned otherwise, the type at each point is returned
+        :type summary: bool
+        :return: A 3-element list or an N x 3 ndarray describing the type of each of the three measurements
+        :rtype: list or np.ndarray
+        """
+        types = self._get_measurement_types()
+        if summary:
+            return ['/'.join([x for x in set(types[:, j])]) for j in range(3)]
+        else:
+            return types
 
+    def get_measurement_status(self, numerical=True):
+        """ Returns the status of each measurement
 
+        If numerical is True, then a numerical representation of the status is returned in which
+          - 1 is for `'SERVOLOCK'`
+          - 2 is for `'HOLD'`
+          - 0 is for everything else
 
+        If numerical is False, then the status of each point is returned as a string.
 
+        :param numerical: If True, then a numerical represtentation of the status is returned
+        :type numerical: bool
+        :return: A numpy array with the status of each measurement
+        :rtype: np.ndarray
+        """
+        status = self._get_measurement_status()
+        if numerical:
+            return np.array([1 if 'SERVOLOCK' in x else 2 if 'HOLD' in x else 0 for x in status])
+        else:
+            return status
 
+    def get_times_in_seconds(self):
+        """ Returns the time of each measurement in seconds since the epoch
 
+        The epoch is defined in the python time module to be midnight of January 1st, 1970.  In
+        other words, this method returns the time of each measurement in the same units at calling
+        the internal python routine `time.time()`
 
+        :return: A single column numpy array with the time of each data point in seconds
+        :rtype: np.ndarray of float
+        """
+        return np.array([x.timestamp() for x in self._get_datetimes()])
