@@ -17,7 +17,7 @@ import os
 from datetime import datetime
 from time import time, sleep
 import serial
-from numpy import save
+import numpy as np
 
 __author__ = "Chris Mueller"
 __email__ = "chrisark7@gmail.com"
@@ -246,12 +246,12 @@ class DewMaster:
                 measurements.append(m[0])
                 data.append(float(m[1]))
         # Check status
-        match = re.search(r"([A-Z]+)\s*$", data_str)
+        match = re.search(r"(([A-Z]+)\s*)+$", data_str)
         if not match:
             warnings.warn('Unable to identify status of measurement')
             status = 'UNKNOWN'
         else:
-            status = match.group(1)
+            status = match.group(0)
             if not status == 'SERVOLOCK':
                 warnings.warn('Status is {0}, data may be inaccurate'.format(status))
         # Return
@@ -328,7 +328,7 @@ class DewMaster:
             tries += 1
         # Start the files
         if npy:
-            save(npy_flnm, data)
+            np.save(npy_flnm, data)
         if csv:
             with open(csv_flnm, mode='w') as f:
                 # Write header
@@ -366,7 +366,7 @@ class DewMaster:
                 # npy file
                 data += data_n
                 if npy:
-                    save(npy_flnm, data)
+                    np.save(npy_flnm, data)
                 # csv file
                 if csv:
                     with open(csv_flnm, mode='a') as f:
@@ -382,6 +382,74 @@ class DewMaster:
                 tries += 1
             if total is not None:
                 go_cond = time() < t_stop
+
+class DewMasterData:
+    """ A class for accessing data stored by the `log_data` method of the DewMaster class
+
+    Note that the class uses the npy file saved by the log, and not the csv file.  If a filename
+    with a csv extension is passed to the constructor, then it changes the extension to .npy and
+    tries to import that file.
+
+    """
+    def __init__(self, filename):
+        """ The constructor for the DewMasterData class
+
+        :param filename: The complete path to the file
+        :type filename: str
+        """
+        # Check extension
+        if os.path.splitext(filename)[1] == '.csv':
+            warnings.warn('filename should point to npy file not csv')
+            filename = os.path.join(os.path.splitext(filename), '.npy')
+        # Try to import
+        try:
+            data = np.load(filename)
+        except FileNotFoundError:
+            raise FileNotFoundError('Can not locate file: {0}'.format(filename))
+        # Assign data to self
+        self.data = data
+
+    ###############################################################################################
+    # Internal Get Methods
+    ###############################################################################################
+    def _get_data(self):
+        """ Returns the measuremed value for each of the three measurements at each data point
+
+        The data is returned as a N x 3 numpy array with numeric entries
+
+        :return: Measurement value for each of the three measurements at each data point
+        :rtype: np.ndarray of float
+        """
+        return np.array(self.data[:, 2].tolist())
+
+    def _get_datetimes(self):
+        """ Returns the datetime instances as a single column ndarray
+
+        :return: The datetime instances of each data point as a single column ndarray
+        :rtype: np.ndarray of datetime.datetime
+        """
+        return self.data[:, 0]
+
+    def _get_measurement_types(self):
+        """ Returns the type for each of the three measurements for each data point
+
+        The data is returned as a N x 3 numpy array with string entries
+
+        :return: Type of each of the three measurements for each data point
+        :rtype: np.ndarray of str
+        """
+        return np.array(self.data[:, 1].tolist())
+
+    def _get_status(self):
+        """ Returns the status of each measurement as a single column ndarray
+
+        :return: The status of each measurement as a single column ndarray
+        :rtype: np.ndarray of str
+        """
+        return self.data[:, 3]
+
+
+
 
 
 
