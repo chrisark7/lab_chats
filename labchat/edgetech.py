@@ -489,7 +489,7 @@ class DewMasterData:
 
         If numerical is False, then the status of each point is returned as a string.
 
-        :param numerical: If True, then a numerical represtentation of the status is returned
+        :param numerical: If True, then a numerical representation of the status is returned
         :type numerical: bool
         :return: A numpy array with the status of each measurement
         :rtype: np.ndarray
@@ -504,7 +504,7 @@ class DewMasterData:
         """ Returns the time of each measurement in seconds since the epoch
 
         The epoch is defined in the python time module to be midnight of January 1st, 1970.  In
-        other words, this method returns the time of each measurement in the same units at calling
+        other words, this method returns the time of each measurement in the same units as calling
         the internal python routine `time.time()`
 
         :return: A single column numpy array with the time of each data point in seconds
