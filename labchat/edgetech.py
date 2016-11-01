@@ -246,7 +246,7 @@ class DewMaster:
                 measurements.append(m[0])
                 data.append(float(m[1]))
         # Check status
-        match = re.search(r"(?!C|F)([A-Z]+([A-Z]+)*)\s*$", data_str)
+        match = re.search(r"(?!C\s+|F\s+)([A-Z]+([A-Z]+)*)\s*$", data_str)
         if not match:
             warnings.warn('Unable to identify status of measurement')
             status = 'UNKNOWN'
