@@ -7,13 +7,17 @@ Note that the relays only understand ascii (latin_1) encoded messages.  Read the
 details.
 """
 
-import serial
 from time import sleep
+import logging
+import warnings
+import pyvisa
 
 __author__ = "Chris Mueller and Mingcan Chen"
-__email__ = "chrisark7@gmail.com"
+__email__ = "cmueller@a-optowave.com"
 __status__ = "Development"
 
+
+logger = logging.getLogger(__name__)
 
 class Relay(object):
     """ A class for working with the National Control Dynamics R120HPRS switching relay.
@@ -26,12 +30,32 @@ class Relay(object):
         :return: An instance of the Relay class
         :rtype: Relay
         """
+        # Create resource manager
+        rm = pyvisa.ResourceManager()
+        # Parse the port
+        if type(port) is str:
+            if port[0:3].upper() == 'COM':
+                try:
+                    port = int(port[3:])
+                except ValueError:
+                    logger.error('Port is improperly specified')
+                    raise
+        if type(port) is int:
+            port = "ASRL{0}::INSTR".format(port)
+            logger.debug("Port was changed to: {0}".format(port))
         # Try to connect to the port
         try:
-            self.device = serial.Serial(port, baudrate=9600, bytesize=serial.EIGHTBITS,
-                                        stopbits=serial.STOPBITS_ONE, parity=serial.PARITY_NONE,
-                                        timeout=timeout)
-        except serial.SerialException as e:
+            self.device = rm.open_resource(port,
+                                           baud_rate=9600,
+                                           data_bits=8,
+                                           stop_bits=pyvisa.constants.StopBits.one,
+                                           parity=pyvisa.constants.Parity.none,
+                                           timeout=timeout*1e3,
+                                           encoding='latin_1',
+                                           read_termination="\n",
+                                           write_termination="\n",
+                                           chunk_size=1)
+        except pyvisa.VisaIOError:
             print('Unable to connect to port ' + port + '. Error message: ' + e.__str__())
             raise
         self.is_open = False
@@ -43,8 +67,7 @@ class Relay(object):
         """ Opens communication to the device
         """
         # Check that serial communication is open
-        if not self.device.isOpen():
-            self.device.open()
+        self.device.open()
         # Set flag
         self.is_open = True
         # Enable commands to be sent to the relay
@@ -74,8 +97,7 @@ class Relay(object):
         if code > 255 or code < 0:
             raise ValueError('code should be an integer between 0 and 255')
         # Send command
-        out = self.device.write(chr(code).encode(encoding='latin_1'))
-        return out
+        self.device.write_raw(chr(code).encode(encoding='latin_1'))
 
     def read(self):
         """ Reads a message from the device one byte at a time
@@ -85,10 +107,12 @@ class Relay(object):
         """
         if not self.is_open:
             raise IOError('Device is not open')
-        if self.device.inWaiting() == 0:
+        if self.device.bytes_in_buffer == 0:
             raise IOError('No data in read buffer')
         else:
-            out = self.device.read(size=1)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                out = self.device.visalib.read(self.device.session, 1)[0]
         return ord(out)
 
     ###############################################################################################
@@ -99,12 +123,20 @@ class Relay(object):
         """
         self.write(254)
         self.write(1)
+        if self.get_state() == 1:
+            return True
+        else:
+            return False
 
     def turn_off(self):
         """ Turns the relay off
         """
         self.write(254)
         self.write(0)
+        if self.get_state() == 0:
+            return True
+        else:
+            return False
 
     def get_state(self):
         """ Returns the relay state: 0=off, 1=on
@@ -122,3 +154,22 @@ class Relay(object):
         """
         self.write(254)
         self.write(8)
+        if self.get_default_state() in [1, 3]:
+            return True
+        else:
+            return False
+
+    def get_default_state(self):
+        """ Returns the current default state of the relay.
+
+        0: relay 1 and 2 off at startup
+        1: relay 1 on, relay 2 off at startup
+        2: relay 1 off, relay 1 on at startup
+        3: relay 1 and 2 on at startup
+
+        Most of our devices only have a single relay, relay 1
+        """
+        self.write(254)
+        self.write(9)
+        sleep(0.1)
+        return self.read()
