@@ -88,7 +88,7 @@ class VisaUsbInstrument(object):
     # Helper Functions
     ###########################################################################
     @staticmethod
-    def get_close_string(string_list, target_string):
+    def get_close_string(target_string, string_list):
         """ A helper function to find the most similar string in a list
 
         This function is designed to be used with text-based inputs where the
@@ -109,7 +109,11 @@ class VisaUsbInstrument(object):
         :return: most likely string
         :rtype: str
         """
-        return get_close_matches(string_list, target_string, n=1)
+        out = get_close_matches(target_string, string_list, n=1)
+        if out:
+            return out[0]
+        else:
+            return None
 
 
     ###########################################################################

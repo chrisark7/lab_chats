@@ -73,26 +73,89 @@ class AFG2225(VisaUsbInstrument):
         Possible channel functions are: SINUSOID, SQUARE, RAMP, PULSE, NOISE,
         USER
 
-        :param function: A string corresponding to the function
         :param channel: The channel to set (1 or 2)
-        :type function: str
+        :param function: A string corresponding to the function
         :type channel: int
+        :type function: str
         """
+        assert type(function) is str
         # Check channel
         channel = self.check_channel(channel)
         # Define possibilities
         long_strings = ["SINUSOID", "SQUARE", "RAMP", "PULSE", "NOISE", "USER"]
         short_strings = ["SIN", "SQU", "PULS", "NOIS"]
         # Check for string match
+        function = function.upper()
         if function not in long_strings + short_strings:
-            best_match = self.get_close_string(long_strings + short_strings, function)
-            logger.warning("{0} does not match any function; using {1} "
-                           "instead".format(function, best_match))
+            best_match = self.get_close_string(function, long_strings + short_strings)
+            if best_match is None:
+                raise ValueError("function does not match any possible functions")
+            else:
+                logger.warning("{0} does not match any function; using {1} "
+                               "instead".format(function, best_match))
             function = best_match
         # Form command
-        command = "SOUR{0}:{1}".format(channel, function)
+        command = "SOUR{0}:FUNCTION {1}".format(channel, function)
         # Issue command
         self.write(command)
+
+    def get_function(self, channel):
+        """ Returns the channel's current function setting
+
+        :param channel: The channel to query
+        :type channel: int
+        :return: The current function setting for the specified channel
+        :rtype: str
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Get Current Function
+        return self.query("SOURCE{0}:FUNCTION?".format(channel))
+
+    def set_frequency(self, channel, frequency):
+        """ Sets the channel's frequency
+
+        The AG2225 can be set down to uHz even when the frequency is in the MHz
+        regime.  So, 10.000000000001e6 will be set even though it is highly
+        unlikely that the internal oscillator has this kind of precision.
+
+        :param channel: The channel to adjust (1 or 2)
+        :param frequency: The frequency in Hz
+        :type channel: int
+        :type frequeny: float or int
+        :return:
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Check
+        # Query the min and max possible frequencies
+        min_freq = float(self.query("SOURCE{0}:FREQUENCY? MIN".format(channel)))
+        max_freq = float(self.query("SOURCE{0}:FREQUENCY? MAX".format(channel)))
+        # Check that frequency is in the range
+        if frequency > max_freq:
+            logger.warning("Frequency is greater than the max for this function; "
+                           "setting to {0} instead".format(max_freq))
+            self.write("SOURCE{0}:FREQUENCY MAX".format(channel))
+        elif frequency < min_freq:
+            logger.warning("Frequency is less than the min for this function; "
+                           "setting to {0} instead".format(min_freq))
+            self.write("SOURCE{0}:FREQUENCY MIN".format(channel))
+        else:
+            command = "SOURCE{0}:FREQUENCY {1}".format(channel, frequency)
+            self.write(command)
+
+    def get_frequency(self, channel):
+        """ Returns the channel's current frequency in Hz
+
+        :param channel: The channel to query
+        :type channel: int
+        :return: The channel's current frequency
+        :rtpye: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Return
+        return float(self.query("SOURCE{0}:FREQUENCY?".format(channel)))
 
 
 
