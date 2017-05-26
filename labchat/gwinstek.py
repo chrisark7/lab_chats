@@ -335,6 +335,58 @@ class AFG2225(VisaUsbInstrument):
     ###########################################################################
     # Set/Get Interface Properties
     ###########################################################################
+    def set_output(self, channel, on_off):
+        """ Switches the output on or off
+
+        `on_off` can be the strings "ON" or "OFF" or a 0 or 1.  Any other
+        value will be evaluated with bool(), used to set the output to on for
+        true/off for false, and raise a warning.
+
+        :param channel: The channel whose output will be switched
+        :param on_off: "ON" or "OFF", 0 or 1
+        :type channel: int
+        :type on_off: str or int
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Parse on_off
+        if type(on_off) is str:
+            on_off = on_off.upper()
+            if on_off == "ON":
+                on_off = True
+            elif on_off == "OFF":
+                on_off = False
+            else:
+                logger.error("on_off not understood")
+                raise ValueError("on_off should be /'ON/' or /'OFF/'")
+        elif on_off == 0:
+            on_off = False
+        elif on_off == 1:
+            on_off = True
+        else:
+            on_off = bool(on_off)
+            if on_off:
+                logger.warning("on_off is not a standard input; using ON")
+            else:
+                logger.warning("on_off is not a standard input; using OFF")
+        if on_off:
+            self.write("OUTPUT{0} ON".format(channel))
+        else:
+            self.write("OUTPUT{0} OFF".format(channel))
+
+    def get_output(self, channel):
+        """ Queries the output state of the specified channel
+
+        :param channel: The channel whose output will be queried
+        :type channel: int
+        :return: True if output is on, False otherwise
+        :rtype: bool
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Get value and parse
+        return bool(int(self.query("OUTPUT{0}?".format(channel))))
+
     def set_voltageunits(self, channel, unit='VPP'):
         """ Sets the current units used to specify the voltage
 
