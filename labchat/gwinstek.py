@@ -15,7 +15,7 @@ from labchat.visausb import VisaUsbInstrument
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class AFG2225(VisaUsbInstrument):
@@ -156,6 +156,138 @@ class AFG2225(VisaUsbInstrument):
         channel = self.check_channel(channel)
         # Return
         return float(self.query("SOURCE{0}:FREQUENCY?".format(channel)))
+
+    def set_amplitude(self, channel, amplitude):
+        """ Sets the channel's amplitude
+
+        Units are Vpp
+
+        The min and max of the possible amplitude settings depend on the
+        current function and output load settings on the function generator
+        This method will warn you if the value is below the min or above the
+        max and set the amplitude appropriately.
+
+        :param channel: The channel who's amplitude will be set
+        :param amplitude: The amplitude value to set in units given by `unit`
+        :type channel: int
+        :type amplitude: float
+        """
+        # Check channel
+        channel = self.check_channel(channel=channel)
+        # Get min and max
+        min_amp = float(self.query("SOURCE{0}:AMPLITUDE? MIN".format(channel)))
+        max_amp = float(self.query("SOURCE{0}:AMPLITUDE? MAX".format(channel)))
+        # Check the amplitude and set
+        if amplitude > max_amp:
+            logger.warning("amplitude is greater than the max for the current "
+                           "settings; setting to {0}".format(max_amp))
+            self.write("SOURCE{0}:AMPLITUDE MAX".format(channel))
+        elif amplitude < min_amp:
+            logger.warning("amplitude is less than the min for the current "
+                           "settings; setting to {0}".format(min_amp))
+            self.write("SOURCE{0}:AMPLITUDE MIN".format(channel))
+        else:
+            command = "SOURCE{0}:AMPLITUDE {1}".format(channel, amplitude)
+            self.write(command)
+
+    def get_amplitude(self, channel):
+        """ Query the channel's amplitude in units of Vpp
+
+        :param channel: The chanel whose amplitude will be queried
+        :type channel: int
+        :return: The current amplitude in units of Vpp
+        :rtype: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Query
+        return float(self.query("SOURCE{0}:AMPLITUDE?".format(channel)))
+
+    def set_dcoffset(self, channel, offset):
+        """ Sets the channel's DC offset
+
+        The min and max of the DC offset depends on the current amplitude
+        (among other things).  This method will query the current max and min
+        and warn the user if the specified value is out of range.  If the
+        specified value is out of range, then the offset will be set to the
+        min/max.
+
+        :param channel: The channel whose offset will be set
+        :param offset: The offset in Volts
+        :type channel: int
+        :type offset: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Get min and max
+        min_off = float(self.query("SOURCE{0}:DCOFFSET? MIN".format(channel)))
+        max_off = float(self.query("SOURCE{0}:DCOFFSET? MAX".format(channel)))
+        # Check the offset and set
+        if offset > max_off:
+            logger.warning("offset is greater than the max for the current "
+                           "settings; setting to {0}".format(max_off))
+            self.write("SOURCE{0}:DCOFFSET MAX".format(channel))
+        elif offset < min_off:
+            logger.warning("offset is less than the min for the current "
+                           "settings; setting to {0}".format(min_off))
+            self.write("SOURCE{0}:DCOFFSET MIN".format(channel))
+        else:
+            command = "SOURCE{0}:DCOFFSET {1}".format(channel, offset)
+            self.write(command)
+
+    def get_dcoffset(self, channel):
+        """ Queries the channel's current DC offset
+
+        :param channel: The chanel whose offset will be queried
+        :type channel: int
+        :return: The current offset in units of Volts
+        :rtype: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Query channel
+        return float(self.query("SOURCE{0}:DCOFFSET?".format(channel)))
+
+    def set_voltageunits(self, channel, unit='VPP'):
+        """ Sets the current units used to specify the voltage
+
+        :param channel: The channel whose units will be set
+        :param unit: One of ['VPP', 'VRMS', 'DBM']
+        :type channel: int
+        :type unit: str
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Check unit
+        unit = unit.upper()
+        unit_list = ['VPP', 'VRMS', 'DBM']
+        if unit not in unit_list:
+            best_match = self.get_close_string(unit, unit_list)
+            if best_match is None:
+                raise ValueError("unit does not match any possible units")
+            else:
+                logger.warning("{0} does not match any function; using {1} "
+                               "instead".format(unit, best_match))
+            unit = best_match
+        # Set unit
+        command = "SOURCE{0}:VOLTAGE:UNIT {1}".format(channel, unit)
+        self.write(command)
+
+    def get_voltageunits(self, channel):
+        """ Queries the channel's current voltage unit
+
+        :param channel: The channel whose units will be queried
+        :type channel: int
+        :return: The current unit of the channel
+        :rtype: str
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Query channel
+        return self.query("SOURCE{0}:VOLTAGE:UNIT?".format(channel))
+
+
+
 
 
 

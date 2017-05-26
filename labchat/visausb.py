@@ -15,7 +15,7 @@ import visa
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class VisaUsbInstrument(object):
