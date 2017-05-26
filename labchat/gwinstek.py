@@ -65,7 +65,7 @@ class AFG2225(VisaUsbInstrument):
         return channel
 
     ###########################################################################
-    # Direct Set Methods
+    # Set/Get Waveform Properties Individually
     ###########################################################################
     def set_function(self, channel, function):
         """ Sets the channel's function
@@ -248,6 +248,93 @@ class AFG2225(VisaUsbInstrument):
         # Query channel
         return float(self.query("SOURCE{0}:DCOFFSET?".format(channel)))
 
+    def set_square_duty(self, channel, duty):
+        """ Sets the duty cycle for the square waveform
+
+        The duty cycle which the AFG 2225 can generate depends on the
+        frequency of the square wave.  This method will query the max and min
+        and warn the user if the specified duty is outside of that range.  It
+        will also set the duty to the max or min in that situation.
+
+        :param channel: The channel whose duty cycle will be set
+        :param duty: Duty cycle in percent: 1-99
+        :type channel: int
+        :type duty: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Get min and max
+        min_duty = float(self.query("SOURCE{0}:SQUARE:DCYCLE? MIN".format(channel)))
+        max_duty = float(self.query("SOURCE{0}:SQUARE:DCYCLE? MAX".format(channel)))
+        # Check the offset and set
+        if duty > max_duty:
+            logger.warning("duty is greater than the max for the current "
+                           "settings; setting to {0}".format(max_duty))
+            self.write("SOURCE{0}:SQUARE:DCYCLE MAX".format(channel))
+        elif duty < min_duty:
+            logger.warning("duty is less than the min for the current "
+                           "settings; setting to {0}".format(min_duty))
+            self.write("SOURCE{0}:SQUARE:DCYCLE MIN".format(channel))
+        else:
+            command = "SOURCE{0}:SQUARE:DCYCLE {1}".format(channel, duty)
+            self.write(command)
+
+    def get_square_duty(self, channel):
+        """ Queries the current square wave duty cycle for the specified channel
+
+        :param channel: The channel whose duty cycle will be queried
+        :type channel: int
+        :return: The current duty cycle
+        :rtype: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Query
+        return float(self.query("SOURCE{0}:SQUARE:DCYCLE?".format(channel)))
+
+    def set_ramp_symmetry(self, channel, symmetry):
+        """ Sets the symmetry parameter for the ramp waveform
+
+
+        :param channel: The channel whose duty cycle will be set
+        :param symmetry: Symmetry in percent: 0-100
+        :type channel: int
+        :type symmetry: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Get min and max
+        min_sym = float(self.query("SOURCE{0}:RAMP:SYMMETRY? MIN".format(channel)))
+        max_sym = float(self.query("SOURCE{0}:RAMP:SYMMETRY? MAX".format(channel)))
+        # Check the offset and set
+        if symmetry > max_sym:
+            logger.warning("symmetry is greater than the max for the current "
+                           "settings; setting to {0}".format(max_sym))
+            self.write("SOURCE{0}:RAMP:SYMMETRY MAX".format(channel))
+        elif symmetry < min_sym:
+            logger.warning("symmetry is less than the min for the current "
+                           "settings; setting to {0}".format(min_sym))
+            self.write("SOURCE{0}:RAMP:SYMMETRY MIN".format(channel))
+        else:
+            command = "SOURCE{0}:RAMP:SYMMETRY {1}".format(channel, symmetry)
+            self.write(command)
+
+    def get_ramp_symmetry(self, channel):
+        """ Queries the current ramp symmetry for the specified channel
+
+        :param channel: The channel whose symmetry will be queried
+        :type channel: int
+        :return: The current symmetry setting
+        :rtype: float
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Query
+        return float(self.query("SOURCE{0}:RAMP:SYMMETRY?".format(channel)))
+
+    ###########################################################################
+    # Set/Get Interface Properties
+    ###########################################################################
     def set_voltageunits(self, channel, unit='VPP'):
         """ Sets the current units used to specify the voltage
 
