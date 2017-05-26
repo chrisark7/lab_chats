@@ -8,7 +8,6 @@ import logging
 import numpy as np
 import visa
 
-__author__ = "Chris Mueller and Mingcan Chen"
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 

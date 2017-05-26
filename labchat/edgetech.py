@@ -19,7 +19,6 @@ from time import time, sleep
 import serial
 import numpy as np
 
-__author__ = "Chris Mueller"
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 

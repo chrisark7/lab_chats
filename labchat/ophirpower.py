@@ -25,6 +25,9 @@ from time import sleep
 import logging
 from collections import Counter
 
+__email__ = "chrisark7@gmail.com"
+__status__ = "Development"
+
 logger = logging.getLogger(__name__)
 
 # class

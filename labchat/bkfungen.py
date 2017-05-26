@@ -8,7 +8,6 @@ import logging
 from time import sleep
 import visa
 
-__author__ = "Chris Mueller and Mingcan Chen"
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
@@ -25,7 +24,7 @@ class BKFunGen(object):
     model.
     """
     def __init__(self, device_id=0, timeout=0.5):
-        """ The constructor for the FuncGen class
+        """ The constructor for the BKFuncGen class
 
         This function searches the devices connected to the computer and initializes the Scope
         object with one of them.  Note that it is still necessary to open the connection before
@@ -46,6 +45,10 @@ class BKFunGen(object):
         # Check device list
         if not devices:
             raise LookupError('no devices are connected to the computer')
+        else:
+            logger.info("=== Devices ===")
+            for i, device in enumerate(devices):
+                logger.info("{0}: ".format(i) + device)
         # Parse device_id and assign
         if type(device_id) is str:
             if device_id not in devices:
