@@ -335,7 +335,7 @@ class AFG2225(VisaUsbInstrument):
     ###########################################################################
     # Set/Get Interface Properties
     ###########################################################################
-    def set_output(self, channel, on_off):
+    def set_output_onoff(self, channel, on_off):
         """ Switches the output on or off
 
         `on_off` can be the strings "ON" or "OFF" or a 0 or 1.  Any other
@@ -374,7 +374,7 @@ class AFG2225(VisaUsbInstrument):
         else:
             self.write("OUTPUT{0} OFF".format(channel))
 
-    def get_output(self, channel):
+    def get_output_onoff(self, channel):
         """ Queries the output state of the specified channel
 
         :param channel: The channel whose output will be queried
@@ -386,6 +386,51 @@ class AFG2225(VisaUsbInstrument):
         channel = self.check_channel(channel)
         # Get value and parse
         return bool(int(self.query("OUTPUT{0}?".format(channel))))
+
+    def set_output_load(self, channel, load):
+        """ Sets the output load to 50 Ohm or infinite for the specified channel
+
+        Valid inputs for load are
+          - String Inputs: '50', 'DEF', 'HZ', 'HIGHZ', 'INF', 'INFINITE'
+          - Integer Inputs: 50
+
+        :param channel: The channel whose load will be set
+        :param load: The desired load (see above for valid inputs)
+        :type channel: int
+        :type load: str or int
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Parse `load`
+        set_load = False
+        if type(load) is str:
+            load = load.upper().replace(" ", "")
+            if load in ("HZ", "HIGHZ", "INF", "INFINITE"):
+                set_load = True
+            elif load == "50":
+                set_load = False
+        elif load == 50:
+            set_load = False
+        else:
+            logger.error("load was not understood")
+            raise ValueError("`load` was not understood")
+        if set_load:
+            self.write("OUTPUT{0}:LOAD INFINITY".format(channel))
+        else:
+            self.write("OUTPUT{0}:LOAD DEFAULT".format(channel))
+
+    def get_output_load(self, channel):
+        """ Queries the current output load
+
+        :param channel: The channel whose load to query
+        :type channel: int
+        :return: Either 'DEFAULT' or 'INFINITE'
+        :rytpe: str
+        """
+        # Check channel
+        channel = self.check_channel(channel)
+        # Query
+        return self.query("OUTPUT{0}:LOAD?".format(channel))
 
     def set_voltageunits(self, channel, unit='VPP'):
         """ Sets the current units used to specify the voltage
