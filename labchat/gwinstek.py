@@ -67,39 +67,49 @@ class AFG2225(VisaUsbInstrument):
     ###########################################################################
     # Set/Get Waveform Properties Individually
     ###########################################################################
-    def set_function(self, channel, function):
+    def set_wavetype(self, channel, wavetype):
         """ Sets the channel's function
 
-        Possible channel functions are: SINUSOID, SQUARE, RAMP, PULSE, NOISE,
+        Possible channel wavetypes are: SINUSOID, SQUARE, RAMP, PULSE, NOISE,
         USER
 
         :param channel: The channel to set (1 or 2)
-        :param function: A string corresponding to the function
+        :param wavetype: A string corresponding to the function
         :type channel: int
-        :type function: str
+        :type wavetype: str
         """
-        assert type(function) is str
+        assert type(wavetype) is str
         # Check channel
         channel = self._check_channel(channel)
         # Define possibilities
-        long_strings = ["SINUSOID", "SQUARE", "RAMP", "PULSE", "NOISE", "USER"]
-        short_strings = ["SIN", "SQU", "PULS", "NOIS"]
+        inputs = {"SINUSOID": "SIN",
+                  "SQUARE": "SQU",
+                  "RAMP": "RAMP",
+                  "PULSE": "PULS",
+                  "NOISE": "NOIS",
+                  "USER": "ARB",
+                  "SIN": "SIN",
+                  "SQU": "SQU",
+                  "PULS": "PULS",
+                  "NOIS": "NOIS"}
         # Check for string match
-        function = function.upper()
-        if function not in long_strings + short_strings:
-            best_match = self._get_close_string(function, long_strings + short_strings)
+        wavetype = wavetype.upper()
+        if wavetype not in inputs.keys():
+            best_match = self._get_close_string(wavetype, inputs.keys())
             if best_match is None:
-                raise ValueError("function does not match any possible functions")
+                raise ValueError("wavetype does not match any possible wavetypes")
             else:
-                logger.warning("{0} does not match any function; using {1} "
-                               "instead".format(function, best_match))
-            function = best_match
+                logger.warning("{0} does not match any wavetype; using {1} "
+                               "instead".format(wavetype, best_match))
+            wavetype = best_match
         # Form command
-        command = "SOUR{0}:FUNCTION {1}".format(channel, function)
+        command = "SOURCE{0}:FUNCTION {1}".format(channel, wavetype)
+        query = "SOURCE{0}:FUNCTION?".format(channel)
+        result = inputs[wavetype]
         # Issue command
-        self.write(command)
+        return self._set_with_check(command, query, result)
 
-    def get_function(self, channel):
+    def get_wavetype(self, channel):
         """ Returns the channel's current function setting
 
         :param channel: The channel to query

@@ -104,7 +104,7 @@ class VisaUsbInstrument(object):
 
         :param string_list: A list of strings to be compared to target_string
         :param target_string: The target string to match
-        :type string_list: list of str
+        :type string_list: list of str, tuple of str, dict_keys
         :type target_string: str
         :return: most likely string
         :rtype: str
@@ -172,14 +172,15 @@ class VisaUsbInstrument(object):
         :return: The output of the read command
         :rtype: str
         """
+        pause_between_tries = 100e-3
         if not self.is_open:
             raise IOError('Communication to instrument is closed')
         try:
             out = self.device.read()
         except visa.VisaIOError:
             logger.debug('Instrument did not return anything, sleeping for '
-                         '0.5 seconds and trying again')
-            sleep(0.5)
+                         '{0} seconds and trying again'.format(pause_between_tries))
+            sleep(pause_between_tries)
             try:
                 out = self.device.read()
             except visa.VisaIOError:
@@ -206,7 +207,7 @@ class VisaUsbInstrument(object):
     ###########################################################################
     # Get/Set Routines
     ###########################################################################
-    def _set_with_check(self, command, query, result, timeout=5):
+    def _set_with_check(self, command, query, result, transform=None, timeout=5):
         """ Issues the command and checks that the query gives the result
 
         This method is designed to ease the implementation of positive feedback
@@ -216,11 +217,16 @@ class VisaUsbInstrument(object):
         `query` returns the result or `False` if it times out.
 
         Note that the check between the output of `query` and `result` is a
-        check for hard equality (i.e. `==`)
+        check for hard equality (i.e. `==`).
+
+        The `transform` variable can be used to apply a function to the result
+        before comparing for equality.  This is helpful for e.g. converting
+        the readback to an integer before comparing for equality.
 
         :param command: The full command to issue to the device
         :param query: The full query command
         :param result: The expected result
+        :param transform: A function applied to readback before comparision
         :param timeout: The length of time to continue trying to set in seconds
         :type command: str
         :type query: str
@@ -242,6 +248,9 @@ class VisaUsbInstrument(object):
             if not out:
                 sleep(pause_between_loops)
                 out = self.query(query)
+            # Transform the result
+            if transform is not None:
+                out = transform(out)
             # Check the result
             if out == result:
                 return True
