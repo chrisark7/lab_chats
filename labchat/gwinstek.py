@@ -129,6 +129,11 @@ class AFG2225(VisaUsbInstrument):
         regime.  So, 10.000000000001e6 will be set even though it is highly
         unlikely that the internal oscillator has this kind of precision.
 
+        Note that the positive feedback on this routine depends on comparing
+        two floats which is never a safe operation.  If it returns False, it
+        is a good idea to double check that floating point precision is not
+        causing the issue.
+
         :param channel: The channel to adjust (1 or 2)
         :param frequency: The frequency in Hz
         :type channel: int
@@ -142,17 +147,26 @@ class AFG2225(VisaUsbInstrument):
         min_freq = float(self.query("SOURCE{0}:FREQUENCY? MIN".format(channel)))
         max_freq = float(self.query("SOURCE{0}:FREQUENCY? MAX".format(channel)))
         # Check that frequency is in the range
+        in_range = True
         if frequency > max_freq:
             logger.warning("Frequency is greater than the max for this function; "
                            "setting to {0} instead".format(max_freq))
-            self.write("SOURCE{0}:FREQUENCY MAX".format(channel))
+            frequency = max_freq
+            in_range = False
         elif frequency < min_freq:
             logger.warning("Frequency is less than the min for this function; "
                            "setting to {0} instead".format(min_freq))
-            self.write("SOURCE{0}:FREQUENCY MIN".format(channel))
-        else:
-            command = "SOURCE{0}:FREQUENCY {1}".format(channel, frequency)
-            self.write(command)
+            frequency = min_freq
+            in_range = False
+        # Build commands
+        command = "SOURCE{0}:FREQUENCY {1}".format(channel, frequency)
+        query = "SOURCE{0}:FREQUENCY?".format(channel)
+        result = frequency
+        out =  self._set_with_check(command=command,
+                                    query=query,
+                                    result=result,
+                                    transform=float)
+        return in_range and out
 
     def get_frequency(self, channel):
         """ Returns the channel's current frequency in Hz
@@ -177,6 +191,13 @@ class AFG2225(VisaUsbInstrument):
         This method will warn you if the value is below the min or above the
         max and set the amplitude appropriately.
 
+        Note that the feedback on this routine depends on comparing two floats
+        which is never a safe operation.  If it returns False, it is a good
+        idea to double check that floating point precision is not causing the
+        issue.  In addition, a False will be returned if the specified
+        amplitude is below the min or above the max, but the amplitude will
+        still be set to the min or max respectively.
+
         :param channel: The channel who's amplitude will be set
         :param amplitude: The amplitude value to set in units given by `unit`
         :type channel: int
@@ -188,17 +209,26 @@ class AFG2225(VisaUsbInstrument):
         min_amp = float(self.query("SOURCE{0}:AMPLITUDE? MIN".format(channel)))
         max_amp = float(self.query("SOURCE{0}:AMPLITUDE? MAX".format(channel)))
         # Check the amplitude and set
+        in_range = True
         if amplitude > max_amp:
             logger.warning("amplitude is greater than the max for the current "
                            "settings; setting to {0}".format(max_amp))
-            self.write("SOURCE{0}:AMPLITUDE MAX".format(channel))
+            amplitude = max_amp
+            in_range = False
         elif amplitude < min_amp:
             logger.warning("amplitude is less than the min for the current "
                            "settings; setting to {0}".format(min_amp))
-            self.write("SOURCE{0}:AMPLITUDE MIN".format(channel))
-        else:
-            command = "SOURCE{0}:AMPLITUDE {1}".format(channel, amplitude)
-            self.write(command)
+            amplitude = min_amp
+            in_range = False
+        # Issue command
+        command = "SOURCE{0}:AMPLITUDE {1}".format(channel, amplitude)
+        query = "SOURCE{0}:AMPLITUDE?".format(channel)
+        result = amplitude
+        out = self._set_with_check(command=command,
+                                   query=query,
+                                   result=result,
+                                   transform=float)
+        return in_range and out
 
     def get_amplitude(self, channel):
         """ Query the channel's amplitude in units of Vpp
@@ -213,7 +243,7 @@ class AFG2225(VisaUsbInstrument):
         # Query
         return float(self.query("SOURCE{0}:AMPLITUDE?".format(channel)))
 
-    def set_dcoffset(self, channel, offset):
+    def set_offset(self, channel, offset):
         """ Sets the channel's DC offset
 
         The min and max of the DC offset depends on the current amplitude
@@ -221,6 +251,13 @@ class AFG2225(VisaUsbInstrument):
         and warn the user if the specified value is out of range.  If the
         specified value is out of range, then the offset will be set to the
         min/max.
+
+        Note that the feedback on this routine depends on comparing two floats
+        which is never a safe operation.  If it returns False, it is a good
+        idea to double check that floating point precision is not causing the
+        issue.  In addition, a False will be returned if the specified
+        offset is below the min or above the max, but the offset will
+        still be set to the min or max respectively.
 
         :param channel: The channel whose offset will be set
         :param offset: The offset in Volts
@@ -233,19 +270,27 @@ class AFG2225(VisaUsbInstrument):
         min_off = float(self.query("SOURCE{0}:DCOFFSET? MIN".format(channel)))
         max_off = float(self.query("SOURCE{0}:DCOFFSET? MAX".format(channel)))
         # Check the offset and set
+        in_range = True
         if offset > max_off:
             logger.warning("offset is greater than the max for the current "
                            "settings; setting to {0}".format(max_off))
-            self.write("SOURCE{0}:DCOFFSET MAX".format(channel))
+            offset = max_off
+            in_range = False
         elif offset < min_off:
             logger.warning("offset is less than the min for the current "
                            "settings; setting to {0}".format(min_off))
-            self.write("SOURCE{0}:DCOFFSET MIN".format(channel))
-        else:
-            command = "SOURCE{0}:DCOFFSET {1}".format(channel, offset)
-            self.write(command)
+            offset = min_off
+            in_range = False
+        command = "SOURCE{0}:DCOFFSET {1}".format(channel, offset)
+        query = "SOURCE{0}:DCOFFSET?".format(channel)
+        result = offset
+        out = self._set_with_check(command=command,
+                                   query=query,
+                                   result=result,
+                                   transform=float)
+        return in_range and out
 
-    def get_dcoffset(self, channel):
+    def get_offset(self, channel):
         """ Queries the channel's current DC offset
 
         :param channel: The chanel whose offset will be queried
@@ -266,6 +311,13 @@ class AFG2225(VisaUsbInstrument):
         and warn the user if the specified duty is outside of that range.  It
         will also set the duty to the max or min in that situation.
 
+        Note that the feedback on this routine depends on comparing two floats
+        which is never a safe operation.  If it returns False, it is a good
+        idea to double check that floating point precision is not causing the
+        issue.  In addition, a False will be returned if the specified
+        duty cycle is below the min or above the max, but the duty cycle will
+        still be set to the min or max respectively.
+
         :param channel: The channel whose duty cycle will be set
         :param duty: Duty cycle in percent: 1-99
         :type channel: int
@@ -277,17 +329,25 @@ class AFG2225(VisaUsbInstrument):
         min_duty = float(self.query("SOURCE{0}:SQUARE:DCYCLE? MIN".format(channel)))
         max_duty = float(self.query("SOURCE{0}:SQUARE:DCYCLE? MAX".format(channel)))
         # Check the offset and set
+        in_range = True
         if duty > max_duty:
             logger.warning("duty is greater than the max for the current "
                            "settings; setting to {0}".format(max_duty))
-            self.write("SOURCE{0}:SQUARE:DCYCLE MAX".format(channel))
+            duty = max_duty
+            in_range = False
         elif duty < min_duty:
             logger.warning("duty is less than the min for the current "
                            "settings; setting to {0}".format(min_duty))
-            self.write("SOURCE{0}:SQUARE:DCYCLE MIN".format(channel))
-        else:
-            command = "SOURCE{0}:SQUARE:DCYCLE {1}".format(channel, duty)
-            self.write(command)
+            duty = min_duty
+            in_range = False
+        command = "SOURCE{0}:SQUARE:DCYCLE {1}".format(channel, duty)
+        query = "SOURCE{0}:SQUARE:DCYCLE?".format(channel)
+        result = duty
+        out = self._set_with_check(command=command,
+                                   query=query,
+                                   result=result,
+                                   transform=float)
+        return in_range and out
 
     def get_square_duty(self, channel):
         """ Queries the current square wave duty cycle for the specified channel
@@ -305,6 +365,12 @@ class AFG2225(VisaUsbInstrument):
     def set_ramp_symmetry(self, channel, symmetry):
         """ Sets the symmetry parameter for the ramp waveform
 
+        Note that the feedback on this routine depends on comparing two floats
+        which is never a safe operation.  If it returns False, it is a good
+        idea to double check that floating point precision is not causing the
+        issue.  In addition, a False will be returned if the specified
+        symmetry is below the min or above the max, but the symmetry will
+        still be set to the min or max respectively.
 
         :param channel: The channel whose duty cycle will be set
         :param symmetry: Symmetry in percent: 0-100
@@ -317,17 +383,25 @@ class AFG2225(VisaUsbInstrument):
         min_sym = float(self.query("SOURCE{0}:RAMP:SYMMETRY? MIN".format(channel)))
         max_sym = float(self.query("SOURCE{0}:RAMP:SYMMETRY? MAX".format(channel)))
         # Check the offset and set
+        in_range = True
         if symmetry > max_sym:
             logger.warning("symmetry is greater than the max for the current "
                            "settings; setting to {0}".format(max_sym))
-            self.write("SOURCE{0}:RAMP:SYMMETRY MAX".format(channel))
+            symmetry = max_sym
+            in_range = False
         elif symmetry < min_sym:
             logger.warning("symmetry is less than the min for the current "
                            "settings; setting to {0}".format(min_sym))
-            self.write("SOURCE{0}:RAMP:SYMMETRY MIN".format(channel))
-        else:
-            command = "SOURCE{0}:RAMP:SYMMETRY {1}".format(channel, symmetry)
-            self.write(command)
+            symmetry = min_sym
+            in_range = False
+        command = "SOURCE{0}:RAMP:SYMMETRY {1}".format(channel, symmetry)
+        query = "SOURCE{0}:RAMP:SYMMETRY?".format(channel)
+        result = symmetry
+        out =  self._set_with_check(command=command,
+                                    query=query,
+                                    result=result,
+                                    transform=float)
+        return in_range and out
 
     def get_ramp_symmetry(self, channel):
         """ Queries the current ramp symmetry for the specified channel
@@ -380,9 +454,16 @@ class AFG2225(VisaUsbInstrument):
             else:
                 logger.warning("on_off is not a standard input; using OFF")
         if on_off:
-            self.write("OUTPUT{0} ON".format(channel))
+            command = "OUTPUT{0} ON".format(channel)
+            query = "OUTPUT{0}?".format(channel)
+            result = '1'
         else:
-            self.write("OUTPUT{0} OFF".format(channel))
+            command = "OUTPUT{0} OFF".format(channel)
+            query = "OUTPUT{0}?".format(channel)
+            result = '0'
+        return self._set_with_check(command=command,
+                                    query=query,
+                                    result=result)
 
     def get_output_onoff(self, channel):
         """ Queries the output state of the specified channel
@@ -411,22 +492,33 @@ class AFG2225(VisaUsbInstrument):
         """
         # Check channel
         channel = self._check_channel(channel)
+        # Possible inputs
+        inputs = {"HZ": "INF",
+                  "HIGHZ": "INF",
+                  "INF": "INF",
+                  "INFINITE": "INF",
+                  "50": "DEF",
+                  "FIFTY": "DEF",
+                  "LZ": "DEF",
+                  "LOWZ": "DEF",
+                  "DEF": "DEF",
+                  "DEFAULT": "DEF",
+                  50: "DEF"}
         # Parse `load`
         set_load = False
-        hz_strings = ("HZ", "HIGHZ", "INF", "INFINITE")
-        lz_strings = ("50", "FIFTY", "LZ", "LOWZ", "DEF", "DEFAULT")
         if type(load) is str:
             load = load.upper().replace(" ", "")
-            if load not in hz_strings + lz_strings:
-                best_match = self._get_close_string(load, hz_strings + lz_strings)
+            if load not in inputs.keys():
+                best_match = self._get_close_string(load, inputs.keys() - [50])
                 if best_match is None:
                     raise ValueError("load does not match any possible options")
                 else:
                     logger.warning("{0} does not match any valid load; using "
                                    "{1} instead".format(load, best_match))
-            if load in hz_strings:
+                load = best_match
+            if inputs[load] == "INF":
                 set_load = True
-            elif load == "50":
+            elif inputs[load] == "DEF":
                 set_load = False
         elif load == 50:
             set_load = False
@@ -434,9 +526,16 @@ class AFG2225(VisaUsbInstrument):
             logger.error("load was not understood")
             raise ValueError("`load` was not understood")
         if set_load:
-            self.write("OUTPUT{0}:LOAD INFINITY".format(channel))
+            command = "OUTPUT{0}:LOAD INFINITY".format(channel)
+            query = "OUTPUT{0}:LOAD?".format(channel)
+            result = inputs[load]
         else:
-            self.write("OUTPUT{0}:LOAD DEFAULT".format(channel))
+            command = "OUTPUT{0}:LOAD DEFAULT".format(channel)
+            query = "OUTPUT{0}:LOAD?".format(channel)
+            result = inputs[load]
+        return self._set_with_check(command=command,
+                                    query=query,
+                                    result=result)
 
     def get_output_load(self, channel):
         """ Queries the current output load
@@ -478,7 +577,11 @@ class AFG2225(VisaUsbInstrument):
             unit = best_match
         # Set unit
         command = "SOURCE{0}:VOLTAGE:UNIT {1}".format(channel, unit)
-        self.write(command)
+        query = "SOURCE{0}:VOLTAGE:UNIT?".format(channel)
+        result = unit
+        return self._set_with_check(command=command,
+                                    query=query,
+                                    result=result)
 
     def get_voltageunits(self, channel):
         """ Queries the channel's current voltage unit
@@ -521,10 +624,14 @@ class AFG2225(VisaUsbInstrument):
         :type load: int or str
         """
         # Issue commands
-        if on_off is not None:
-            self.set_output_onoff(channel=channel, on_off=on_off)
+        it_worked = True
         if load is not None:
-            self.set_output_load(channel=channel, load=load)
+            out = self.set_output_load(channel=channel, load=load)
+            it_worked = it_worked and out
+        if on_off is not None:
+            out = self.set_output_onoff(channel=channel, on_off=on_off)
+            it_worked = it_worked and out
+        return it_worked
 
 
 
