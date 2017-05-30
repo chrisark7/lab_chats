@@ -48,7 +48,7 @@ class AFG2225(VisaUsbInstrument):
     # Helper Methods
     ###########################################################################
     @staticmethod
-    def check_channel(channel):
+    def _check_channel(channel):
         """ Checks to make sure that channel is an integer in [1, 2]
 
         :param channel: channel to check
@@ -80,14 +80,14 @@ class AFG2225(VisaUsbInstrument):
         """
         assert type(function) is str
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Define possibilities
         long_strings = ["SINUSOID", "SQUARE", "RAMP", "PULSE", "NOISE", "USER"]
         short_strings = ["SIN", "SQU", "PULS", "NOIS"]
         # Check for string match
         function = function.upper()
         if function not in long_strings + short_strings:
-            best_match = self.get_close_string(function, long_strings + short_strings)
+            best_match = self._get_close_string(function, long_strings + short_strings)
             if best_match is None:
                 raise ValueError("function does not match any possible functions")
             else:
@@ -108,7 +108,7 @@ class AFG2225(VisaUsbInstrument):
         :rtype: str
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Get Current Function
         return self.query("SOURCE{0}:FUNCTION?".format(channel))
 
@@ -126,7 +126,7 @@ class AFG2225(VisaUsbInstrument):
         :return:
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Check
         # Query the min and max possible frequencies
         min_freq = float(self.query("SOURCE{0}:FREQUENCY? MIN".format(channel)))
@@ -153,7 +153,7 @@ class AFG2225(VisaUsbInstrument):
         :rtpye: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Return
         return float(self.query("SOURCE{0}:FREQUENCY?".format(channel)))
 
@@ -173,7 +173,7 @@ class AFG2225(VisaUsbInstrument):
         :type amplitude: float
         """
         # Check channel
-        channel = self.check_channel(channel=channel)
+        channel = self._check_channel(channel=channel)
         # Get min and max
         min_amp = float(self.query("SOURCE{0}:AMPLITUDE? MIN".format(channel)))
         max_amp = float(self.query("SOURCE{0}:AMPLITUDE? MAX".format(channel)))
@@ -199,7 +199,7 @@ class AFG2225(VisaUsbInstrument):
         :rtype: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Query
         return float(self.query("SOURCE{0}:AMPLITUDE?".format(channel)))
 
@@ -218,7 +218,7 @@ class AFG2225(VisaUsbInstrument):
         :type offset: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Get min and max
         min_off = float(self.query("SOURCE{0}:DCOFFSET? MIN".format(channel)))
         max_off = float(self.query("SOURCE{0}:DCOFFSET? MAX".format(channel)))
@@ -244,7 +244,7 @@ class AFG2225(VisaUsbInstrument):
         :rtype: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Query channel
         return float(self.query("SOURCE{0}:DCOFFSET?".format(channel)))
 
@@ -262,7 +262,7 @@ class AFG2225(VisaUsbInstrument):
         :type duty: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Get min and max
         min_duty = float(self.query("SOURCE{0}:SQUARE:DCYCLE? MIN".format(channel)))
         max_duty = float(self.query("SOURCE{0}:SQUARE:DCYCLE? MAX".format(channel)))
@@ -288,7 +288,7 @@ class AFG2225(VisaUsbInstrument):
         :rtype: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Query
         return float(self.query("SOURCE{0}:SQUARE:DCYCLE?".format(channel)))
 
@@ -302,7 +302,7 @@ class AFG2225(VisaUsbInstrument):
         :type symmetry: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Get min and max
         min_sym = float(self.query("SOURCE{0}:RAMP:SYMMETRY? MIN".format(channel)))
         max_sym = float(self.query("SOURCE{0}:RAMP:SYMMETRY? MAX".format(channel)))
@@ -328,7 +328,7 @@ class AFG2225(VisaUsbInstrument):
         :rtype: float
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Query
         return float(self.query("SOURCE{0}:RAMP:SYMMETRY?".format(channel)))
 
@@ -348,7 +348,7 @@ class AFG2225(VisaUsbInstrument):
         :type on_off: str or int
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Parse on_off
         if type(on_off) is str:
             on_off = on_off.upper()
@@ -383,7 +383,7 @@ class AFG2225(VisaUsbInstrument):
         :rtype: bool
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Get value and parse
         return bool(int(self.query("OUTPUT{0}?".format(channel))))
 
@@ -391,8 +391,8 @@ class AFG2225(VisaUsbInstrument):
         """ Sets the output load to 50 Ohm or infinite for the specified channel
 
         Valid inputs for load are
-          - String Inputs: '50', 'DEF', 'HZ', 'HIGHZ', 'INF', 'INFINITE'
-          - Integer Inputs: 50
+          - 50 Ohm (Low Z): '50', 'FIFTY', 'DEF', 'DEFAULT', 'LOWZ', 'LZ'
+          - High Z: 'HZ', 'HIGHZ', 'INF', 'INFINITE'
 
         :param channel: The channel whose load will be set
         :param load: The desired load (see above for valid inputs)
@@ -400,12 +400,21 @@ class AFG2225(VisaUsbInstrument):
         :type load: str or int
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Parse `load`
         set_load = False
+        hz_strings = ("HZ", "HIGHZ", "INF", "INFINITE")
+        lz_strings = ("50", "FIFTY", "LZ", "LOWZ", "DEF", "DEFAULT")
         if type(load) is str:
             load = load.upper().replace(" ", "")
-            if load in ("HZ", "HIGHZ", "INF", "INFINITE"):
+            if load not in hz_strings + lz_strings:
+                best_match = self._get_close_string(load, hz_strings + lz_strings)
+                if best_match is None:
+                    raise ValueError("load does not match any possible options")
+                else:
+                    logger.warning("{0} does not match any valid load; using "
+                                   "{1} instead".format(load, best_match))
+            if load in hz_strings:
                 set_load = True
             elif load == "50":
                 set_load = False
@@ -422,13 +431,17 @@ class AFG2225(VisaUsbInstrument):
     def get_output_load(self, channel):
         """ Queries the current output load
 
+        The output returned to the user is directly from the function generator
+        which uses 'DEF' (i.e. default) to mean 50 Ohms and 'INF' (i.e.
+        infinite) to mean high Z of infinite impedance.
+
         :param channel: The channel whose load to query
         :type channel: int
-        :return: Either 'DEFAULT' or 'INFINITE'
+        :return: Either 'DEF' or 'INF'
         :rytpe: str
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Query
         return self.query("OUTPUT{0}:LOAD?".format(channel))
 
@@ -441,12 +454,12 @@ class AFG2225(VisaUsbInstrument):
         :type unit: str
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Check unit
         unit = unit.upper()
         unit_list = ['VPP', 'VRMS', 'DBM']
         if unit not in unit_list:
-            best_match = self.get_close_string(unit, unit_list)
+            best_match = self._get_close_string(unit, unit_list)
             if best_match is None:
                 raise ValueError("unit does not match any possible units")
             else:
@@ -466,9 +479,42 @@ class AFG2225(VisaUsbInstrument):
         :rtype: str
         """
         # Check channel
-        channel = self.check_channel(channel)
+        channel = self._check_channel(channel)
         # Query channel
         return self.query("SOURCE{0}:VOLTAGE:UNIT?".format(channel))
+
+    ###########################################################################
+    # Composite Commands
+    ###########################################################################
+    def set_output(self, channel, on_off=None, load=None):
+        """ Sets the output settings of the AFG2225
+
+        Any parameter left as ``None`` will not be changed from its current
+        state.
+
+        The ``channel`` parameter must be either ``1`` or ``2`` for the two
+        output channels of the function generator.
+
+        The ``on_off`` parameter determines whether to set the output to be on
+        or off.  Valid settings are those accepted by the `set_output_onoff`
+        method.
+
+        The ``load`` parameter determines whether the output impedance is set
+        to 50 Ohms or High Z. Valid inputs are those accepted by the
+        `set_output_load` method.
+
+        :param channel: 1 or 2
+        :param on_off: 'ON' of 'OFF'
+        :param load: 50 or 'HZ'
+        :type channel: int
+        :type on_off: str
+        :type load: int or str
+        """
+        # Issue commands
+        if on_off is not None:
+            self.set_output_onoff(channel=channel, on_off=on_off)
+        if load is not None:
+            self.set_output_load(channel=channel, load=load)
 
 
 

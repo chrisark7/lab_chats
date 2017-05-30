@@ -166,7 +166,7 @@ class BKFunGen(object):
         return out
 
     ###############################################################################################
-    #  High Level Commands
+    #  Composite Commands
     ###############################################################################################
     def set_output(self, channel=1, on_off=None, load=None):
         """ Sets the output settings of the function generator
@@ -179,7 +179,7 @@ class BKFunGen(object):
         The ``on_off`` parameter determines whether to set the output to be on or off.  The two
         valid settings for it are ``'ON'`` or ``'OFF'``.
 
-        The ``load`` parameter determines wether the output impedance is set to 50 Ohms or High Z.
+        The ``load`` parameter determines whether the output impedance is set to 50 Ohms or High Z.
         The two valid inputs are ``50`` or ``HZ``.
 
         :param channel: 1 or 2
@@ -188,7 +188,6 @@ class BKFunGen(object):
         :type channel: int
         :type on_off: str
         :type load: int or str
-        :return:
         """
         # Type checking
         if channel not in [1, 2]:

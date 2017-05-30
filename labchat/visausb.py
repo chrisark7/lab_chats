@@ -8,7 +8,7 @@ National Instruments and is freely available online.
 """
 
 import logging
-from time import sleep
+from time import time, sleep
 from difflib import get_close_matches
 import visa
 
@@ -88,7 +88,7 @@ class VisaUsbInstrument(object):
     # Helper Functions
     ###########################################################################
     @staticmethod
-    def get_close_string(target_string, string_list):
+    def _get_close_string(target_string, string_list):
         """ A helper function to find the most similar string in a list
 
         This function is designed to be used with text-based inputs where the
@@ -114,7 +114,6 @@ class VisaUsbInstrument(object):
             return out[0]
         else:
             return None
-
 
     ###########################################################################
     # Communication Commands
@@ -203,3 +202,50 @@ class VisaUsbInstrument(object):
         self.write(command)
         out = self.read()
         return out
+
+    ###########################################################################
+    # Get/Set Routines
+    ###########################################################################
+    def _set_with_check(self, command, query, result, timeout=5):
+        """ Issues the command and checks that the query gives the result
+
+        This method is designed to ease the implementation of positive feedback
+        routines in the subclasses.  It issues the `command` and then checks
+        that the `query` returns the `result` until either: 1) `query` returns
+        `result` or 2) the timeout is reached.  It returns `True` if the
+        `query` returns the result or `False` if it times out.
+
+        Note that the check between the output of `query` and `result` is a
+        check for hard equality (i.e. `==`)
+
+        :param command: The full command to issue to the device
+        :param query: The full query command
+        :param result: The expected result
+        :param timeout: The length of time to continue trying to set in seconds
+        :type command: str
+        :type query: str
+        :type result: str
+        :type timeout: float or int
+        :return: True or False
+        :rtype: bool
+        """
+        pause_between_loops = 100e-3
+        pause_between_set_and_query = 25e-3
+        set_bool = False
+        t0 = time()
+        while not set_bool:
+            # Set and query
+            self.write(command)
+            sleep(pause_between_set_and_query)
+            out = self.query(query)
+            # Try the query command again if out is an empty string
+            if not out:
+                sleep(pause_between_loops)
+                out = self.query(query)
+            # Check the result
+            if out == result:
+                return True
+            elif time() - t0 > timeout:
+                return False
+            else:
+                sleep(pause_between_loops)
