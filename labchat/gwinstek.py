@@ -77,6 +77,8 @@ class AFG2225(VisaUsbInstrument):
         :param wavetype: A string corresponding to the function
         :type channel: int
         :type wavetype: str
+        :return: True if set, False if not
+        :rtype: bool
         """
         assert type(wavetype) is str
         # Check channel
@@ -138,7 +140,8 @@ class AFG2225(VisaUsbInstrument):
         :param frequency: The frequency in Hz
         :type channel: int
         :type frequeny: float or int
-        :return:
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -202,6 +205,8 @@ class AFG2225(VisaUsbInstrument):
         :param amplitude: The amplitude value to set in units given by `unit`
         :type channel: int
         :type amplitude: float
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel=channel)
@@ -263,6 +268,8 @@ class AFG2225(VisaUsbInstrument):
         :param offset: The offset in Volts
         :type channel: int
         :type offset: float
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -322,6 +329,8 @@ class AFG2225(VisaUsbInstrument):
         :param duty: Duty cycle in percent: 1-99
         :type channel: int
         :type duty: float
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -376,6 +385,8 @@ class AFG2225(VisaUsbInstrument):
         :param symmetry: Symmetry in percent: 0-100
         :type channel: int
         :type symmetry: float
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -416,6 +427,58 @@ class AFG2225(VisaUsbInstrument):
         # Query
         return float(self.query("SOURCE{0}:RAMP:SYMMETRY?".format(channel)))
 
+    def set_phase(self, channel, phase):
+        """ Sets the phase of the specified channel
+
+        The phase is specified in degrees, and the valid range goes from -180
+        to 180.
+
+        :param channel: The channel whose phase to set
+        :param phase: The pahse [-180, 180]
+        :type channel: int
+        :type phase: float or int
+        :return: True if set, False if not
+        :rtype: bool
+        """
+        # Check channel
+        channel = self._check_channel(channel)
+        # Get min and max
+        min_phase = float(self.query("SOURCE{0}:PHASE? MIN".format(channel)))
+        max_phase = float(self.query("SOURCE{0}:PHASE? MAX".format(channel)))
+        # Check the phase and set
+        in_range = True
+        if phase > max_phase:
+            logger.warning("phase is greater than the max for the current "
+                           "settings; setting to {0}".format(max_phase))
+            phase = max_phase
+            in_range = False
+        elif phase < min_phase:
+            logger.warning("phase is less than the min for the current "
+                           "settings; setting to {0}".format(min_phase))
+            phase = min_phase
+            in_range = False
+        command = "SOURCE{0}:PHASE {1}".format(channel, phase)
+        query = "SOURCE{0}:PHASE?".format(channel)
+        result = phase
+        out =  self._set_with_check(command=command,
+                                    query=query,
+                                    result=result,
+                                    transform=float)
+        return in_range and out
+
+    def get_phase(self, channel):
+        """ Queries the phase setting of the specified channel
+
+        :param channel: The channel whose phase to query
+        :type channel: int
+        :return: The current phase of the specified channel
+        :rtype: float
+        """
+        # Check channel
+        channel = self._check_channel(channel)
+        # Query
+        return float(self.query("SOURCE{0}:PHASE?".format(channel)))
+
     ###########################################################################
     # Set/Get Interface Properties
     ###########################################################################
@@ -430,6 +493,8 @@ class AFG2225(VisaUsbInstrument):
         :param on_off: "ON" or "OFF", 0 or 1
         :type channel: int
         :type on_off: str or int
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -489,6 +554,8 @@ class AFG2225(VisaUsbInstrument):
         :param load: The desired load (see above for valid inputs)
         :type channel: int
         :type load: str or int
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -561,6 +628,8 @@ class AFG2225(VisaUsbInstrument):
         :param unit: One of ['VPP', 'VRMS', 'DBM']
         :type channel: int
         :type unit: str
+        :return: True if set, False if not
+        :rtype: bool
         """
         # Check channel
         channel = self._check_channel(channel)
@@ -622,7 +691,11 @@ class AFG2225(VisaUsbInstrument):
         :type channel: int
         :type on_off: str
         :type load: int or str
+        :return: True if set, False if not
+        :rtype: bool
         """
+        # Check channel
+        channel = self._check_channel(channel)
         # Issue commands
         it_worked = True
         if load is not None:
@@ -633,9 +706,56 @@ class AFG2225(VisaUsbInstrument):
             it_worked = it_worked and out
         return it_worked
 
+    def set_wave(self, channel, wavetype=None, frequency=None, amplitude=None,
+                 offset=None, symmetry=None, duty=None, phase=None):
+        """ Composite function to set all key output function parameters
 
+        Any parameters left as `None` will not be changed from the current
+        state.  Note that many of the parameters are only valid for some
+        wavetypes.
 
-
-
-
-
+        :param channel: 1 or 2
+        :param wavetype: 'SIN', 'SQUARE', 'RAMP', 'PULSE', 'NOISE', 'USER'
+        :param frequency: unit is Hertz, minimum is 1e-6, max is 25e6
+        :param amplitude: unit is Volts
+        :param offset: unit is Volts
+        :param symmetry: unit is percent, only for ramp wave, 0-100
+        :param duty: unit is percent, only for square wave, 1-99
+        :param phase: unit is degrees, -180 - 180
+        :type channel: int
+        :type wavetype: str
+        :type frequency: float
+        :type amplitude: float
+        :type offset: float
+        :type symmetry: float
+        :type duty: float
+        :type phase: float
+        :return: True if set, False if not
+        :rtype: bool
+        """
+        # Check channel
+        channel = self._check_channel(channel)
+        # Issue commands
+        it_worked = True
+        if wavetype is not None:
+            out = self.set_wavetype(channel, wavetype)
+            it_worked = it_worked and out
+        if frequency is not None:
+            out = self.set_frequency(channel, frequency)
+            it_worked = it_worked and out
+        if amplitude is not None:
+            out = self.set_amplitude(channel, amplitude)
+            it_worked = it_worked and out
+        if offset is not None:
+            out = self.set_offset(channel, offset)
+            it_worked = it_worked and out
+        if symmetry is not None:
+            out = self.set_ramp_symmetry(channel, symmetry)
+            it_worked = it_worked and out
+        if duty is not None:
+            out = self.set_square_duty(channel, duty)
+            it_worked = it_worked and out
+        if phase is not None:
+            out = self.set_phase(channel, phase)
+            it_worked = it_worked and out
+        return it_worked
