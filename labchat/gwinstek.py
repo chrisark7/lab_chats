@@ -65,6 +65,71 @@ class AFG2225(VisaUsbInstrument):
         return channel
 
     ###########################################################################
+    # System Methods
+    ###########################################################################
+    def system_read_error_queue(self):
+        """ Reads all messages stored in the error queue
+
+        This method reads all messages stored in the AFG2225's internal error
+        queue and returns them to the user as a list of 2-element tuples where
+        the first element is the error code and the second is the message.
+
+        Note that the error queue reads out in a strange way from this device
+        where the separation between successive reads from the error queue is
+        broken at the end of the error code.  This means that the messages
+        returned have the last error's message and the next error's code.
+        However, this quirk is handled internally so it should not affect the
+        user.
+
+        :return: list of tuples with (error code, error message)
+        :rtype: list of tuple
+        """
+        # Read the error queue until 'No error.' is returned
+        last_message = ''
+        messages = []
+        i = 0
+        self.flush()
+        while i < 20:
+            last_message = self.query("SYSTEM:ERROR?")
+            if last_message == "No error.":
+                break
+            else:
+                messages.append(last_message)
+        self.flush()
+        print(messages)
+        # Parse messages
+        out = []
+        next_code = None
+        last_code = None
+        last_message = None
+        for message in messages:
+            # Interpret message
+            if not message:
+                pass
+            elif '.' in message:
+                split_messages = message.split('.')
+                last_message = '.'.join(split_messages[:-1])
+                if split_messages[-1]:
+                    next_code = split_messages[-1]
+            elif next_code is None:
+                next_code = message
+            else:
+                last_message = message
+            # Check that error code is an integer
+            if next_code is not None:
+                try:
+                    next_code = int(next_code)
+                except (ValueError, TypeError):
+                    logger.warning("Unable to interpret code as an integer; "
+                                   "something may be wrong with error readback")
+            # Save to output
+            if last_message is not None:
+                out.append((last_code, last_message))
+            last_code = next_code
+        # Return
+        return out
+
+    ###########################################################################
     # Set/Get Waveform Properties Individually
     ###########################################################################
     def set_wavetype(self, channel, wavetype):
@@ -666,7 +731,7 @@ class AFG2225(VisaUsbInstrument):
         return self.query("SOURCE{0}:VOLTAGE:UNIT?".format(channel))
 
     ###########################################################################
-    # Composite Commands
+    # Composite Methods
     ###########################################################################
     def set_output(self, channel, on_off=None, load=None):
         """ Sets the output settings of the AFG2225
