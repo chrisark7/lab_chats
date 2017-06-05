@@ -16,6 +16,7 @@ import re
 import os
 from datetime import datetime
 from time import time, sleep
+import copy
 import serial
 import numpy as np
 
@@ -407,6 +408,23 @@ class DewMasterData:
             raise FileNotFoundError('Can not locate file: {0}'.format(filename))
         # Assign data to self
         self.data = data
+
+    def join(self, data2):
+        """ Joins the data from a second DewMasterData object
+
+        This method takes a second DewMasterData instance and joins its data to
+        the current DewMaster instance.  The combined dataset is sorted by the
+        timestamps.  It modifies the current instance in-place.
+
+        :param data2: An second instance of the DewMasterData class
+        :type data2: DewMasterData
+        """
+        assert type(data2) is DewMasterData
+        # Make a copy of the data from data2
+        data2_copy = copy.deepcopy(data2.data)
+        # Join the two datasets and sort
+        self.data = np.concatenate((self.data, data2_copy), axis=0)
+        self.data = self.data[self.data[:, 0].argsort()]
 
     ###############################################################################################
     # Internal Get Methods

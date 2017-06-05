@@ -84,7 +84,7 @@ class BKFunGen(object):
         """ Opens the connection to the function generator
         """
         if self.is_open:
-            raise IOError('Comunication to function generator is already open')
+            raise IOError('Communication to function generator is already open')
         try:
             self.device = self.resource_manager.open_resource(self.fungen_id, open_timeout=10e3)
         except:

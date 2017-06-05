@@ -1,7 +1,7 @@
 """ Defines a superclass for communicating with usb instruments through pyvisa
 
 The pyvisa package provides a powerful framework for communication with
-devices conforming the VISA communication standards.  The pyvisa package
+devices conforming to the VISA communication standards.  The pyvisa package
 provides a link between python an the VISA instance installed on the local
 computer.  The most common installation is NIVISA, which is maintained by
 National Instruments and is freely available online.
