@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class VisaUsbInstrument(object):
     """ A class for interacting with USB instruments through pyvisa
 
-    This class relies on pyvisa for communication with, in turn, relies on
+    This class relies on pyvisa for communication which, in turn, relies on
     a third party VISA installation such as NIVISA.
 
     The class implements low-level communication appropriate for all
