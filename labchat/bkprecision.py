@@ -8,7 +8,6 @@ import logging
 from time import sleep
 import visa
 
-__author__ = "Chris Mueller and Mingcan Chen"
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
@@ -25,7 +24,7 @@ class BKFunGen(object):
     model.
     """
     def __init__(self, device_id=0, timeout=0.5):
-        """ The constructor for the FuncGen class
+        """ The constructor for the BKFuncGen class
 
         This function searches the devices connected to the computer and initializes the Scope
         object with one of them.  Note that it is still necessary to open the connection before
@@ -46,6 +45,10 @@ class BKFunGen(object):
         # Check device list
         if not devices:
             raise LookupError('no devices are connected to the computer')
+        else:
+            logger.info("=== Devices ===")
+            for i, device in enumerate(devices):
+                logger.info("{0}: ".format(i) + device)
         # Parse device_id and assign
         if type(device_id) is str:
             if device_id not in devices:
@@ -81,7 +84,7 @@ class BKFunGen(object):
         """ Opens the connection to the function generator
         """
         if self.is_open:
-            raise IOError('Comunication to function generator is already open')
+            raise IOError('Communication to function generator is already open')
         try:
             self.device = self.resource_manager.open_resource(self.fungen_id, open_timeout=10e3)
         except:
@@ -163,7 +166,7 @@ class BKFunGen(object):
         return out
 
     ###############################################################################################
-    #  High Level Commands
+    #  Composite Commands
     ###############################################################################################
     def set_output(self, channel=1, on_off=None, load=None):
         """ Sets the output settings of the function generator
@@ -176,7 +179,7 @@ class BKFunGen(object):
         The ``on_off`` parameter determines whether to set the output to be on or off.  The two
         valid settings for it are ``'ON'`` or ``'OFF'``.
 
-        The ``load`` parameter determines wether the output impedance is set to 50 Ohms or High Z.
+        The ``load`` parameter determines whether the output impedance is set to 50 Ohms or High Z.
         The two valid inputs are ``50`` or ``HZ``.
 
         :param channel: 1 or 2
@@ -185,7 +188,6 @@ class BKFunGen(object):
         :type channel: int
         :type on_off: str
         :type load: int or str
-        :return:
         """
         # Type checking
         if channel not in [1, 2]:
