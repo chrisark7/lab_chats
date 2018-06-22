@@ -1,6 +1,10 @@
 """ A package for accessing Tektronix oscilloscopes
 
-This package relies primarily on the pyvisa package for communication with the oscilloscope.
+This package relies primarily on the pyvisa package for communication with the
+oscilloscope.
+
+Note that the computer must have an visa installation (such as NI-Visa) in order
+for pyvisa to be able to communicate with the oscilloscope.
 """
 
 from time import sleep, time
@@ -8,7 +12,7 @@ import logging
 import numpy as np
 import visa
 
-__author__ = "Chris Mueller and Mingcan Chen"
+__author__ = "Chris Mueller"
 __email__ = "chrisark7@gmail.com"
 __status__ = "Development"
 
@@ -439,7 +443,7 @@ class Scope(object):
         self.write('*WAI')
         self.write('CURVE?')
         try:
-            data_raw = self.read(timeout=timeout_temp)
+            data_raw = self.read(timeout=timeout_temp).split(' ')[-1]
         except visa.VisaIOError:
             self.device.timeout = self.timeout
             logger.error('Data retrieval timed out.')
@@ -454,11 +458,11 @@ class Scope(object):
             pre = 'WFMPRE:'
         else:
             pre = 'WFMOUTPRE:'
-        xincr = float(self.query(pre + 'XINCR?'))
+        xincr = float(self.query(pre + 'XINCR?').split(' ')[-1])
         if not data_units == 'bytes':
-            ymult = float(self.query(pre + 'YMULT?'))
-            yzero = float(self.query(pre + 'YZERO?'))
-            yoff = float(self.query(pre + 'YOFF?'))
+            ymult = float(self.query(pre + 'YMULT?').split(' ')[-1])
+            yzero = float(self.query(pre + 'YZERO?').split(' ')[-1])
+            yoff = float(self.query(pre + 'YOFF?').split(' ')[-1])
             data = (np.array([float(x) for x in data_raw.split(sep=',')]) - yoff) * ymult + yzero
         else:
             data = np.array([float(x) for x in data_raw.split(sep=',')])
